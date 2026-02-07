@@ -1,0 +1,22 @@
+
+> pharos@0.1.0 dev C:\Users\hp\OneDrive - Mayank Thakur\Desktop\Phar_OS
+> dotenv -e .env -- pnpm --filter web dev
+
+
+> web@0.1.0 dev C:\Users\hp\OneDrive - Mayank Thakur\Desktop\Phar_OS\apps\web
+> dotenv -e ../../.env -- next dev
+
+⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.56.1:3001
+- Environments: .env.local
+
+✓ Starting...
+⨯ Unable to acquire lock at C:\Users\hp\OneDrive - Mayank Thakur\Desktop\Phar_OS\apps\web\.next\dev\lock, is another instance of next dev running?
+  Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h
+C:\Users\hp\OneDrive - Mayank Thakur\Desktop\Phar_OS\apps\web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  web@0.1.0 dev: `dotenv -e ../../.env -- next dev`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.

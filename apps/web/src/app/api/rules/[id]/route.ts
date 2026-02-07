@@ -2,6 +2,7 @@ import { updateRuleSchema } from "@pharos/core";
 import { prisma } from "@/lib/prisma";
 import { err, ok } from "@/lib/apiResponse";
 import { AuthError } from "@/lib/auth";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { requireOwner } from "@/lib/rbac";
 import { getCurrentWorkspace } from "@/lib/tenant";
 
@@ -30,6 +31,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   try {
     await requireOwner(workspace.id);
@@ -84,7 +91,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   try {
     await requireOwner(workspace.id);

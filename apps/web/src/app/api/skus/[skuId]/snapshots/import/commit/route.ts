@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireBillingWriteAccess, requireFeature, requireWithinLimit } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { parseSnapshotCsv } from "@/lib/snapshotCsv";
@@ -16,6 +17,12 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ skuId: string }> },
 ) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   try {
     await requireFeature(workspace.id, "csvImport");

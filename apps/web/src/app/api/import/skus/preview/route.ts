@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireFeature } from "@/lib/entitlements";
 import { BULK_IMPORT_LIMIT, parseSkusCsv } from "@/lib/importCenterCsv";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +8,12 @@ import { getCurrentWorkspace } from "@/lib/tenant";
 import { bulkImportBodySchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   try {
     await requireFeature(workspace.id, "csvImport");

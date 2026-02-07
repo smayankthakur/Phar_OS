@@ -1,6 +1,7 @@
 import { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { getCurrentWorkspace } from "@/lib/tenant";
 import { createSnapshotSchema, snapshotQuerySchema, toSnapshotDTO } from "@/lib/competitors";
 
@@ -43,6 +44,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ skuI
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ skuId: string }> }) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   const { skuId } = await params;
 

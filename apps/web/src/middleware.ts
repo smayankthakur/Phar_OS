@@ -5,6 +5,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth-constants";
 const PUBLIC_PAGE_PREFIXES = ["/client-demo", "/login", "/setup"];
 const PUBLIC_API_PREFIXES = ["/api/portal/", "/api/templates/", "/api/auth/", "/api/cron/"];
 const PUBLIC_API_EXACT = new Set(["/api/health"]);
+const REQUEST_ID_HEADER = "x-request-id";
 
 function isPublicPage(pathname: string) {
   if (PUBLIC_PAGE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
@@ -25,17 +26,54 @@ function isPublicApi(pathname: string) {
   return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
+function requestIdFromRequest(request: NextRequest) {
+  return request.headers.get(REQUEST_ID_HEADER) ?? "";
+}
+
+function ensureRequestId(request: NextRequest) {
+  const existing = requestIdFromRequest(request);
+  if (existing) return existing;
+  return crypto.randomUUID();
+}
+
+function nextWithRequestId(request: NextRequest, init?: Parameters<typeof NextResponse.next>[0]) {
+  const requestId = ensureRequestId(request);
+  const headers = new Headers(request.headers);
+  headers.set(REQUEST_ID_HEADER, requestId);
+  const response = NextResponse.next({
+    ...(init ?? {}),
+    request: { headers },
+  });
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  return response;
+}
+
+function jsonWithRequestId(request: NextRequest, body: unknown, init?: Parameters<typeof NextResponse.json>[1]) {
+  const requestId = ensureRequestId(request);
+  const response = NextResponse.json(body, init);
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  return response;
+}
+
+function redirectWithRequestId(request: NextRequest, url: URL) {
+  const requestId = ensureRequestId(request);
+  const response = NextResponse.redirect(url);
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  return response;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
   if (pathname.startsWith("/api/")) {
     if (isPublicApi(pathname)) {
-      return NextResponse.next();
+      return nextWithRequestId(request);
     }
 
     if (!sessionCookie) {
-      return NextResponse.json(
+      return jsonWithRequestId(
+        request,
         {
           ok: false,
           error: {
@@ -47,23 +85,23 @@ export function middleware(request: NextRequest) {
       );
     }
 
-    return NextResponse.next();
+    return nextWithRequestId(request);
   }
 
   if (isPublicPage(pathname)) {
     if ((pathname === "/login" || pathname === "/setup") && sessionCookie) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return redirectWithRequestId(request, new URL("/", request.url));
     }
-    return NextResponse.next();
+    return nextWithRequestId(request);
   }
 
   if (!sessionCookie) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    return redirectWithRequestId(request, loginUrl);
   }
 
-  return NextResponse.next();
+  return nextWithRequestId(request);
 }
 
 export const config = {

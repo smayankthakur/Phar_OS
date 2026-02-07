@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { AuthError, requireSessionForApi } from "@/lib/auth";
 import { ensureDefaultRules } from "@/lib/tenant";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { ensureWorkspaceNotificationSettings } from "@/lib/notify";
 import { ensureWorkspaceSubscription } from "@/lib/plans";
 import { ensureWorkspaceSettings } from "@/lib/settings";
@@ -44,6 +45,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await verifyCsrf(request);
     const session = await requireSessionForApi();
     const payload = await parseJsonBody(request, createWorkspaceSchema);
 
@@ -74,6 +76,9 @@ export async function POST(request: Request) {
 
     return ok({ item: workspace }, 201);
   } catch (error) {
+    if (error instanceof CsrfError) {
+      return err("CSRF_INVALID", error.message, 403);
+    }
     if (error instanceof AuthError) {
       return err("UNAUTHORIZED", "Authentication required", 401);
     }

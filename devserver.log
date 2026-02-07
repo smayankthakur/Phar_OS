@@ -1,0 +1,16 @@
+
+> pharos@0.1.0 dev C:\Users\hp\OneDrive - Mayank Thakur\Desktop\Phar_OS
+> dotenv -e .env -- pnpm --filter web dev
+
+
+> web@0.1.0 dev C:\Users\hp\OneDrive - Mayank Thakur\Desktop\Phar_OS\apps\web
+> dotenv -e ../../.env -- next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.56.1:3000
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 10.1s
+ GET / 200 in 7.9s (compile: 3.3s, proxy.ts: 397ms, render: 4.2s)

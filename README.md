@@ -160,67 +160,71 @@ pnpm --filter @pharos/db exec prisma migrate deploy --schema prisma/schema.prism
 
 This roadmap is locked for PharOS and must be kept exactly in sync for all future updates in this project.
 
-### Phase 1 - Foundation & Signal Layer (MVP Spine)
+### Phase 1 — Core App MVP (Steps 01–10)
 
-- Step 01: Project scaffold + DB + health check {complete}
-- Step 02: Tenant bootstrap + workspace context + app shell {complete}
-- Step 03: SKU core (CRUD + list + detail) {complete}
-- Step 04: Competitors + manual price snapshots {complete}
-- Step 05: Event store + ingestion + demo simulations {complete}
-- Step 06: Rules engine (IF condition -> THEN recommendation) {complete}
-- Step 07: Actions + Apply flow + audit log {complete}
-- Total: 7 steps
+Outcome: Working closed-loop "Signal -> Recommend -> Apply -> Audit" MVP + premium UI.
 
-### Phase 2 - Decision -> Action Loop (Sellable Product)
+- Step 01: Repo + monorepo scaffold + app shell (workspace cookie, layout) { `complete` }
+- Step 02: Core DB models: Workspace, SKU, basic CRUD { `complete` }
+- Step 03: SKU pages + list/detail UX { `complete` }
+- Step 04: Competitors + snapshots (manual) + SKU competitor panel { `complete` }
+- Step 05: Event store + ingest + demo simulations { `complete` }
+- Step 06: Rules engine -> recommendations generation { `complete` }
+- Step 07: Apply action -> update SKU + audit log { `complete` }
+- Step 08: SKU timeline (events + actions + audits) + audit modal { `complete` }
+- Step 09: Demo reset + deterministic dataset + guided demo page { `complete` }
+- Step 10: Premium UI polish + health endpoint + deploy-ready config { `complete` }
 
-- Step 08: Recommendation engine wiring (event -> rule -> action) {complete}
-- Step 09: Command Center v1 (Signals / Recommendations / Applied) {complete}
-- Step 10: SKU timeline (events + actions history) {complete}
-- Step 11: Guardrails (margin floor, price bounds) {complete}
-- Total: 4 steps
+### Phase 2 — Pilot Readiness (Steps 11–15)
 
-### Phase 3 - Demo Armor & Pilot Readiness
+Outcome: Safe pilot execution with guardrails + import/export + docs + testability.
 
-- Step 12: Demo Mode hardening (reset, scripted flows) {complete}
-- Step 13: UX polish (premium UI, empty states, badges) {complete}
-- Step 14: Error handling, validation, edge cases {complete}
-- Step 15: Performance + indexes + basic security pass {complete}
-- Total: 4 steps
+- Step 11: Pricing guardrails (min margin / max change / rounding) + blocked actions { `complete` }
+- Step 12: CSV import (snapshots) with preview + commit { `complete` }
+- Step 13: Client Demo Mode landing + seeded workspace creation + demo script inside app { `complete` }
+- Step 14: Runbook + /help + "pnpm up" + operational docs { `complete` }
+- Step 15: Smoke tests + export dataset + minimal telemetry logging { `complete` }
 
-### Phase 4 - Production v1 SaaS
+### Phase 3 — Enterprise Foundations (Steps 16–20)
 
-- Step 16: Real auth (email / magic link) {complete}
-- Step 17: Role enforcement (Owner vs Analyst) {complete}
-- Step 18: CSV import (competitor prices, SKUs) {complete}
-- Step 19: Notifications (log -> email/slack stub) {complete}
-- Step 20: Deployment, envs, backups, monitoring
-- Total: 5 steps
+Outcome: Onboarding, client portal, integrations stubs, notifications, real auth/RBAC.
 
-### Phase 5 - Scale & Moat Expansion (Post-Launch)
+- Step 16: Onboarding wizard + workspace cloning + Import Center + CSV templates { `complete` }
+- Step 17: Read-only client portal via token + reports + revocation { `complete` }
+- Step 18: Shopify adapter stub + job queue + DRY_RUN/LIVE + processing { `complete` }
+- Step 19: Notifications outbox (email/webhook) + dispatcher + ops UI { `complete` }
+- Step 20: Authentication + sessions + RBAC + actor-attributed audit integrity { `complete` }
 
-- Step 21: Real competitor scraping infra
-- Step 22: Multi-channel pricing (Shopify + others)
-- Step 23: Advanced pricing strategies
-- Step 24: Multi-tenant analytics & reporting
-- Step 25: Billing, plans, limits, reseller layer {complete}
-- Total: 5 steps
+### Phase 4 — Monetization (Steps 21–22)
 
-## Grand Total
+Outcome: Plan system + Stripe subscription sync driving entitlements.
 
-- Phases: 5
-- Steps: 25
+- Step 21: Plans + entitlements + usage metering + billing UI (manual plan switch) { `complete` }
+- Step 22: Stripe checkout + portal + webhook sync + billing-state gating (past_due/canceled) { `complete` }
 
-## Reality Check
+### Phase 5 — Scale + White-Label (Steps 23–25)
 
-- Steps 1-15 = 15-30 days -> demo + paid pilot ready
-- Steps 1-20 = true v1 SaaS
-- Steps 21-25 = scale, not survival
+Outcome: Production security, HA posture, reseller layer.
+
+- Step 23: Security hardening (headers, CSRF, rate limit, backups, prod migrations, observability)
+- Step 24: Redis rate limiting + SKIP LOCKED durable queues + cron endpoints + /ops
+- Step 25: Reseller layer: reseller accounts, branding, domain mapping, plan overrides { `complete` }
+
+### Phase 6 — Enterprise Expansion (Steps 26–30)
+
+Outcome: Big-deal readiness + compliance + ecosystem.
+
+- Step 26: Enterprise controls (audit export CSV/JSON, retention policies, data access logs; invite flows / SCIM-lite provisioning; SSO placeholder architecture with SAML/OIDC-ready interfaces)
+- Step 27: Compliance & governance pack (GDPR delete/export per workspace; data residency flags + DPA-ready config; PII minimization checklist)
+- Step 28: ROI analytics & reporting (margin uplift tracking before/after; action impact attribution; weekly PDF/CSV reports download)
+- Step 29: Integrations framework (marketplace-ready) (adapter interface pattern: Shopify -> "connectors"; webhook receiver framework + signing; import mappings per connector)
+- Step 30: Launch & SLA packaging (runbooks for support; uptime posture + incident process; final pricing, onboarding checklist, "go-live kit")
 
 ## Project Rule (Locked)
 
 - Always update this README roadmap when step status changes.
-- Use status markers in roadmap lines: `{complete}` for completed work.
-- Keep `{complete}` markers current on every step update in this project.
+- Use status markers in roadmap lines: `{ `complete` }` for completed work.
+- Keep `{ `complete` }` markers current on every step update in this project.
 - Do not alter phase names, step numbering, or scope wording unless explicitly requested.
 - Treat this section as the canonical plan for the entire project.
 

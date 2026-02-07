@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AuthError, requireSessionForApi } from "@/lib/auth";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { setWorkspaceCookie } from "@/lib/tenant";
 import { selectWorkspaceSchema } from "@/lib/validation";
 
@@ -19,6 +20,12 @@ async function extractWorkspaceId(request: Request) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   let session;
   try {
     session = await requireSessionForApi();

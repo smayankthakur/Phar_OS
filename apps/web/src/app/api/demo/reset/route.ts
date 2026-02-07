@@ -1,5 +1,6 @@
 import { err, ok } from "@/lib/apiResponse";
 import { AuthError } from "@/lib/auth";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireFeature } from "@/lib/entitlements";
 import { getCurrentWorkspace } from "@/lib/tenant";
 import { resetWorkspaceDemoDataset } from "@/lib/demoSeed";
@@ -8,8 +9,9 @@ import { RateLimitError, rateLimitOrThrow } from "@/lib/ratelimit";
 import { requireOwner } from "@/lib/rbac";
 import { logTelemetry } from "@/lib/telemetry";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    await verifyCsrf(request);
     const { workspace } = await getCurrentWorkspace();
     await requireFeature(workspace.id, "demoMode");
     await requireOwner(workspace.id);
@@ -41,6 +43,9 @@ export async function POST() {
       },
     });
   } catch (error) {
+    if (error instanceof CsrfError) {
+      return err("CSRF_INVALID", error.message, 403);
+    }
     if (error instanceof EntitlementError) {
       return err("FORBIDDEN", error.message, 403);
     }

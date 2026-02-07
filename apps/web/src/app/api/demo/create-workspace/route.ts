@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { err, ok } from "@/lib/apiResponse";
 import { AuthError } from "@/lib/auth";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireFeature } from "@/lib/entitlements";
 import { resetWorkspaceDemoDataset } from "@/lib/demoSeed";
 import { ensureWorkspaceSubscription } from "@/lib/plans";
@@ -8,8 +9,9 @@ import { getCurrentWorkspace, setWorkspaceCookie } from "@/lib/tenant";
 import { setClientDemoModeCookie } from "@/lib/demoMode";
 import { requireOwner } from "@/lib/rbac";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    await verifyCsrf(request);
     const current = await getCurrentWorkspace();
     await requireFeature(current.workspace.id, "demoMode");
     const actor = await requireOwner(current.workspace.id);
@@ -37,6 +39,9 @@ export async function POST() {
     setClientDemoModeCookie(response);
     return response;
   } catch (error) {
+    if (error instanceof CsrfError) {
+      return err("CSRF_INVALID", error.message, 403);
+    }
     if (error instanceof EntitlementError) {
       return err("FORBIDDEN", error.message, 403);
     }

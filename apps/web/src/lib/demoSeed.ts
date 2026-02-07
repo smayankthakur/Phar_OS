@@ -67,7 +67,6 @@ const DEFAULT_RULES = [
 
 export async function resetWorkspaceDemoDataset(workspaceId: string) {
   return prisma.$transaction(async (tx) => {
-    await tx.auditLog.deleteMany({ where: { workspaceId } });
     await tx.notificationOutbox.deleteMany({ where: { workspaceId } });
     await tx.action.deleteMany({ where: { workspaceId } });
     await tx.event.deleteMany({ where: { workspaceId } });

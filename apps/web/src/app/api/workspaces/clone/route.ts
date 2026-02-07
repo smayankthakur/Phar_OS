@@ -3,6 +3,7 @@ import { Prisma } from "@pharos/db";
 import { prisma } from "@/lib/prisma";
 import { AuthError } from "@/lib/auth";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { clearClientDemoModeCookie } from "@/lib/demoMode";
 import { DEFAULT_PRICING_SETTINGS } from "@/lib/settings";
 import { logTelemetry } from "@/lib/telemetry";
@@ -13,6 +14,7 @@ import { workspaceCloneSchema } from "@/lib/validation";
 export async function POST(request: Request) {
   let payload: z.infer<typeof workspaceCloneSchema>;
   try {
+    await verifyCsrf(request);
     const current = await getCurrentWorkspace();
     const actor = await requireOwner(current.workspace.id);
     payload = workspaceCloneSchema.parse(await request.json());
@@ -257,6 +259,9 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    if (error instanceof CsrfError) {
+      return err("CSRF_INVALID", error.message, 403);
+    }
     if (error instanceof AuthError) {
       if (error.status === 403) return err("FORBIDDEN", "Insufficient permissions", 403);
       return err("UNAUTHORIZED", "Authentication required", 401);

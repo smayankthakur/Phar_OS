@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentWorkspace } from "@/lib/tenant";
 import { toEventDTO } from "@/lib/events";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireFeature } from "@/lib/entitlements";
 import { createEventAndRecommendations, RuleRunnerError } from "@/lib/ruleRunner";
 import { logTelemetry } from "@/lib/telemetry";
@@ -111,6 +112,12 @@ async function buildSimulationPayload(workspaceId: string, type: EventType) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   try {
     await requireFeature(workspace.id, "demoMode");

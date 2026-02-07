@@ -4,6 +4,7 @@ export type ApiErrorCode =
   | "BAD_REQUEST"
   | "UNAUTHORIZED"
   | "FORBIDDEN"
+  | "CSRF_INVALID"
   | "NOT_FOUND"
   | "CONFLICT"
   | "TOO_MANY_REQUESTS"

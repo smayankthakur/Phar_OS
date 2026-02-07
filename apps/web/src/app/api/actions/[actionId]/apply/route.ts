@@ -9,6 +9,7 @@ import { requireRole } from "@/lib/rbac";
 import { DEFAULT_PRICING_SETTINGS, parseRoundingMode } from "@/lib/settings";
 import { logTelemetry } from "@/lib/telemetry";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 
 class ApplyActionError extends Error {
   constructor(
@@ -54,9 +55,15 @@ function parseSuggestedPrice(details: Prisma.JsonValue) {
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ actionId: string }> },
 ) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   const actor = await requireRole(workspace.id, "ANALYST");
   const { actionId } = await params;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { err, ok } from "@/lib/apiResponse";
 import { AuthError } from "@/lib/auth";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { PLAN_TIERS, type PlanTier } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { requireOwner } from "@/lib/rbac";
@@ -13,6 +14,12 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
 
   try {

@@ -1,6 +1,7 @@
 import { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireWithinLimit } from "@/lib/entitlements";
 import { getCurrentWorkspace } from "@/lib/tenant";
 import { createCompetitorSchema, isUniqueError, toCompetitorDTO } from "@/lib/competitors";
@@ -17,6 +18,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   let payload;
   try {
