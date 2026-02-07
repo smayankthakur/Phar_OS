@@ -167,6 +167,7 @@ pnpm start:prod
   - `SameSite=Lax`
   - `Max-Age=2592000` (30 days)
 
+<<<<<<< HEAD
 ## Locked Master Roadmap (Source of Truth)
 
 This roadmap is locked for PharOS and must be kept exactly in sync for all future updates in this project.
@@ -239,3 +240,5 @@ Outcome: Big-deal readiness + compliance + ecosystem.
 - Do not alter phase names, step numbering, or scope wording unless explicitly requested.
 - Treat this section as the canonical plan for the entire project.
 
+=======
+>>>>>>> 121427c3ed5525306c59487d8b47acb7e64bb892
