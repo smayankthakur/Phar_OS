@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import { formatTs } from "@/lib/format";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type SettingsItem = {
   id: string;
@@ -87,7 +88,7 @@ export function NotificationsIntegrationPanel() {
 
       const response = await fetch("/api/integrations/notifications", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
       });
       const body = await response.json().catch(() => ({}));
@@ -109,7 +110,7 @@ export function NotificationsIntegrationPanel() {
     setTesting(true);
     setToast(null);
     try {
-      const response = await fetch("/api/integrations/notifications/test", { method: "POST" });
+      const response = await fetch("/api/integrations/notifications/test", { method: "POST", headers: withCsrfHeaders() });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(body?.error?.message ?? "Failed to send test notification");
@@ -129,7 +130,7 @@ export function NotificationsIntegrationPanel() {
     try {
       const response = await fetch("/api/notifications/process", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ limit: 10 }),
       });
       const body = await response.json().catch(() => ({}));

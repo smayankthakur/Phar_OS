@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type SimulationType = "COMPETITOR_PRICE_DROP" | "COST_INCREASE" | "STOCK_LOW";
 
@@ -21,7 +22,7 @@ export function DemoSimulationButtons() {
     try {
       await fetch("/api/demo/simulate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ type }),
       });
       router.refresh();

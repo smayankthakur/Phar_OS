@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type SimulationType = "COMPETITOR_PRICE_DROP" | "COST_INCREASE" | "STOCK_LOW";
 
@@ -19,7 +20,7 @@ export function QuickActions({ clientDemoMode = false }: { clientDemoMode?: bool
     setPendingReset(true);
     setToast(null);
     try {
-      const response = await fetch("/api/demo/reset", { method: "POST" });
+      const response = await fetch("/api/demo/reset", { method: "POST", headers: withCsrfHeaders() });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.error?.message ?? "Reset failed");
       setToast({ message: "Demo dataset loaded", tone: "ok" });
@@ -37,7 +38,7 @@ export function QuickActions({ clientDemoMode = false }: { clientDemoMode?: bool
     try {
       const response = await fetch("/api/demo/simulate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ type: simulationType }),
       });
       const body = await response.json().catch(() => ({}));

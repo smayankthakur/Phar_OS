@@ -1,5 +1,6 @@
 import { err, ok } from "@/lib/apiResponse";
 import { AuthError } from "@/lib/auth";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireFeature } from "@/lib/entitlements";
 import { requireOwner } from "@/lib/rbac";
 import { getCurrentWorkspace } from "@/lib/tenant";
@@ -7,7 +8,13 @@ import { getShopifySettings, isShopifyConfigured, shopifyFetch } from "@/lib/sho
 
 const TEST_QUERY = `query ShopInfo { shop { name myshopifyDomain } }`;
 
-export async function POST() {
+export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   try {
     await requireOwner(workspace.id);

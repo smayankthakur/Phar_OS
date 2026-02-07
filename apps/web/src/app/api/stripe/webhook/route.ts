@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import Stripe from "stripe";
 import { Prisma } from "@pharos/db";
 import { prisma } from "@/lib/prisma";
@@ -94,14 +95,11 @@ async function handleCheckoutCompleted(event: Stripe.Event) {
   const existing = await resolveWorkspaceSubscription({ workspaceId, customerId, subscriptionId });
   if (!existing) return;
 
-  await prisma.workspaceSubscription.update({
-    where: { workspaceId: existing.workspaceId },
-    data: {
-      stripeCustomerId: customerId ?? existing.stripeCustomerId,
-      stripeSubscriptionId: subscriptionId ?? existing.stripeSubscriptionId,
-      renewedAt: new Date(),
-    },
-  });
+  // Do not override subscription "truth" if it has already been synced by a subscription.updated event.
+  const checkoutData: Record<string, unknown> = { renewedAt: new Date() };
+  if (!existing.stripeCustomerId && customerId) checkoutData.stripeCustomerId = customerId;
+  if (!existing.stripeSubscriptionId && subscriptionId) checkoutData.stripeSubscriptionId = subscriptionId;
+  await prisma.workspaceSubscription.update({ where: { workspaceId: existing.workspaceId }, data: checkoutData });
 
   if (subscriptionId) {
     const stripe = getStripe();
@@ -196,6 +194,7 @@ export async function POST(request: Request) {
   }
 
   const rawBody = await request.text();
+  const payloadHash = createHash("sha256").update(rawBody).digest("hex");
 
   let event: Stripe.Event;
   try {
@@ -205,16 +204,39 @@ export async function POST(request: Request) {
     return new Response("Invalid signature", { status: 400 });
   }
 
+  // Idempotent + retryable storage:
+  // - If processing fails, processedAt remains null, allowing retries.
+  // - If already processed, return 200.
+  const existing = await prisma.stripeWebhookEvent.findUnique({
+    where: { stripeEventId: event.id },
+  });
+  if (existing?.processedAt) {
+    return new Response("Already processed", { status: 200 });
+  }
+
   try {
-    await prisma.stripeWebhookEvent.create({
-      data: {
-        stripeEventId: event.id,
-        type: event.type,
-      },
-    });
+    if (existing) {
+      await prisma.stripeWebhookEvent.update({
+        where: { stripeEventId: event.id },
+        data: {
+          type: event.type,
+          payloadHash,
+        },
+      });
+    } else {
+      await prisma.stripeWebhookEvent.create({
+        data: {
+          stripeEventId: event.id,
+          type: event.type,
+          payloadHash,
+          processedAt: null,
+        },
+      });
+    }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return new Response("Already processed", { status: 200 });
+      const raced = await prisma.stripeWebhookEvent.findUnique({ where: { stripeEventId: event.id } });
+      if (raced?.processedAt) return new Response("Already processed", { status: 200 });
     }
     return new Response("Webhook storage failure", { status: 500 });
   }
@@ -224,6 +246,11 @@ export async function POST(request: Request) {
   } catch {
     return new Response("Webhook processing failure", { status: 500 });
   }
+
+  await prisma.stripeWebhookEvent.update({
+    where: { stripeEventId: event.id },
+    data: { processedAt: new Date() },
+  }).catch(() => undefined);
 
   const sub = await resolveWorkspaceSubscription({
     customerId: (event.data.object as { customer?: string | null })?.customer ?? null,

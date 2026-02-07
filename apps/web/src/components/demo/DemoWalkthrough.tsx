@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Toast } from "@/components/ui/Toast";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type SimulationType = "COMPETITOR_PRICE_DROP" | "COST_INCREASE" | "STOCK_LOW";
 
@@ -93,7 +94,7 @@ export function DemoWalkthrough() {
     setError(null);
     setBanner(null);
     try {
-      const response = await fetch("/api/demo/reset", { method: "POST" });
+      const response = await fetch("/api/demo/reset", { method: "POST", headers: withCsrfHeaders() });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body?.error?.message ?? "Reset failed");
@@ -114,7 +115,7 @@ export function DemoWalkthrough() {
     try {
       const response = await fetch("/api/demo/simulate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ type }),
       });
       if (!response.ok) {
@@ -133,7 +134,7 @@ export function DemoWalkthrough() {
     setApplyPendingId(actionId);
     setError(null);
     try {
-      const response = await fetch(`/api/actions/${actionId}/apply`, { method: "POST" });
+      const response = await fetch(`/api/actions/${actionId}/apply`, { method: "POST", headers: withCsrfHeaders() });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(body?.error?.message ?? "Apply failed");

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type WorkspaceOption = {
   id: string;
@@ -22,7 +23,7 @@ export function WorkspaceSwitcherClient({
     startTransition(async () => {
       await fetch("/api/workspaces/select", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ workspaceId }),
       });
 

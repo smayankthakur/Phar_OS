@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type Props = {
   skuId: string;
@@ -22,7 +23,7 @@ export function PushToShopifyButton({ skuId, actionId, newPrice, disabled = fals
     try {
       const response = await fetch("/api/shopify/jobs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ skuId, actionId, newPrice }),
       });
 

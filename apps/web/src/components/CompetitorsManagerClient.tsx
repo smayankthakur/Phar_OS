@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { LoadDemoDatasetButton } from "@/components/LoadDemoDatasetButton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type Competitor = {
   id: string;
@@ -45,7 +46,7 @@ export function CompetitorsManagerClient({
     try {
       const response = await fetch("/api/competitors", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           name: createDraft.name,
           domain: createDraft.domain || undefined,
@@ -77,7 +78,7 @@ export function CompetitorsManagerClient({
     try {
       const response = await fetch(`/api/competitors/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           name: draft.name,
           domain: draft.domain || undefined,
@@ -108,6 +109,7 @@ export function CompetitorsManagerClient({
     try {
       const response = await fetch(`/api/competitors/${id}`, {
         method: "DELETE",
+        headers: withCsrfHeaders(),
       });
 
       if (!response.ok) {

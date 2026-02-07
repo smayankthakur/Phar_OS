@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type WorkspaceOption = {
   id: string;
@@ -40,7 +41,7 @@ export function OnboardingWizard({ workspaces }: { workspaces: WorkspaceOption[]
       if (startMethod === "clone") {
         const response = await fetch("/api/workspaces/clone", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: withCsrfHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
             sourceWorkspaceId,
             newWorkspaceName: workspaceName.trim(),
@@ -62,7 +63,7 @@ export function OnboardingWizard({ workspaces }: { workspaces: WorkspaceOption[]
       } else {
         const createResponse = await fetch("/api/workspaces", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: withCsrfHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ name: workspaceName.trim() }),
         });
         const createBody = await createResponse.json().catch(() => ({}));
@@ -76,10 +77,10 @@ export function OnboardingWizard({ workspaces }: { workspaces: WorkspaceOption[]
 
         await fetch("/api/workspaces/select", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: withCsrfHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ workspaceId: newWorkspaceId }),
         });
-        await fetch("/api/demo/exit", { method: "POST" });
+        await fetch("/api/demo/exit", { method: "POST", headers: withCsrfHeaders() });
       }
 
       router.push(`/import?onboarded=1&workspaceId=${newWorkspaceId}`);

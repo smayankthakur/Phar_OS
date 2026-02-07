@@ -67,15 +67,22 @@ function toCookieHeader(cookieJar) {
   return entries.map(([key, value]) => `${key}=${value}`).join("; ");
 }
 
+function isMutatingMethod(method) {
+  return method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
+}
+
 async function requestJson(baseUrl, path, options = {}, cookieJar, timeoutMs = 15000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const method = (options.method ?? "GET").toUpperCase();
+  const csrf = cookieJar?.pharos_csrf;
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     signal: controller.signal,
     headers: {
       "Content-Type": "application/json",
       ...(options.headers ?? {}),
+      ...(cookieJar && csrf && isMutatingMethod(method) ? { "x-pharos-csrf": csrf } : {}),
       ...(cookieJar && Object.keys(cookieJar).length > 0 ? { Cookie: toCookieHeader(cookieJar) } : {}),
     },
   }).finally(() => clearTimeout(timer));
@@ -161,6 +168,28 @@ async function assertLoginRateLimit(baseUrl, email, wrongPassword) {
   throw new Error(`Expected login endpoint to rate limit (429). Last status: ${lastStatus}`);
 }
 
+async function assertCsrfEnforced(baseUrl, cookieJar) {
+  // Logout is a safe mutating route to assert CSRF enforcement without changing DB state.
+  const res = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(cookieJar && Object.keys(cookieJar).length > 0 ? { Cookie: toCookieHeader(cookieJar) } : {}),
+    },
+  });
+  if (res.status !== 403) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(`Expected CSRF-protected endpoint to return 403 without header. Got ${res.status}: ${body?.error?.message ?? ""}`);
+  }
+}
+
+async function assertStripeWebhookCsrfExempt(baseUrl) {
+  const res = await fetch(`${baseUrl}/api/stripe/webhook`, { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } });
+  if (res.status === 403) {
+    throw new Error("Stripe webhook should be CSRF-exempt (should not return 403)");
+  }
+}
+
 async function main() {
   const envFile = loadEnvFile(".env");
   const baseEnv = { ...envFile, ...process.env };
@@ -206,6 +235,12 @@ async function main() {
 
     console.log("[smoke] Verifying cron secret enforcement...");
     await assertCronSecret(baseUrl, baseEnv.CRON_SECRET);
+
+    console.log("[smoke] Verifying CSRF enforcement...");
+    await assertCsrfEnforced(baseUrl, cookieJar);
+
+    console.log("[smoke] Verifying Stripe webhook is CSRF-exempt...");
+    await assertStripeWebhookCsrfExempt(baseUrl);
 
     console.log("[smoke] Verifying login rate limiting...");
     await assertLoginRateLimit(baseUrl, "rate-limit@pharos.local", "wrong-password-123!");

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { SnapshotCsvImport } from "@/components/sku/SnapshotCsvImport";
 import { formatMoney, formatTs } from "@/lib/format";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type CompetitorOption = {
   id: string;
@@ -45,7 +46,7 @@ export function SkuCompetitorPanel({
     try {
       const response = await fetch(`/api/skus/${skuId}/snapshots`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ competitorId, price }),
       });
 

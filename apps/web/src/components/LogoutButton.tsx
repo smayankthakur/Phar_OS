@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export function LogoutButton() {
     if (pending) return;
     setPending(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", { method: "POST", headers: withCsrfHeaders() });
       router.push("/login");
       router.refresh();
     } finally {

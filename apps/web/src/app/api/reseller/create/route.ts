@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { err, ok } from "@/lib/apiResponse";
 import { requireSessionForApi } from "@/lib/auth";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { logTelemetry } from "@/lib/telemetry";
 import { getCurrentWorkspace } from "@/lib/tenant";
@@ -11,6 +12,12 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   await requireSessionForApi();
 
   let payload: z.infer<typeof bodySchema>;
@@ -49,4 +56,3 @@ export async function POST(request: Request) {
 
   return ok({ reseller });
 }
-

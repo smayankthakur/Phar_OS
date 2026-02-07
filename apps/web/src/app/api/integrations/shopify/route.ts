@@ -1,6 +1,7 @@
 import { ZodError } from "zod";
 import { err, ok } from "@/lib/apiResponse";
 import { AuthError } from "@/lib/auth";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireFeature } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { requireOwner } from "@/lib/rbac";
@@ -26,6 +27,12 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
   try {
     await requireOwner(workspace.id);

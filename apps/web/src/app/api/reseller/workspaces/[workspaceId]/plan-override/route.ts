@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { requireResellerRole } from "@/lib/reseller";
 import { logTelemetry } from "@/lib/telemetry";
@@ -11,6 +12,12 @@ const bodySchema = z.object({
 });
 
 export async function PATCH(request: Request, ctx: { params: Promise<{ workspaceId: string }> }) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const membership = await requireResellerRole("RESELLER_ADMIN");
   const { workspaceId } = await ctx.params;
 

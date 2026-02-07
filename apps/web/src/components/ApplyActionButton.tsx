@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 export function ApplyActionButton({
   actionId,
@@ -23,6 +24,7 @@ export function ApplyActionButton({
     try {
       const response = await fetch(`/api/actions/${actionId}/apply`, {
         method: "POST",
+        headers: withCsrfHeaders(),
       });
 
       if (!response.ok) {

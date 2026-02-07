@@ -218,6 +218,11 @@ a {
   outline: none;
 }
 
+.switcher-select option {
+  color: #0b0d12;
+  background: #f4f6fb;
+}
+
 .button-primary {
   display: inline-flex;
   align-items: center;
@@ -297,6 +302,11 @@ a {
   color: var(--text-0);
   padding: 0.55rem 0.65rem;
   outline: none;
+}
+
+.field select option {
+  color: #0b0d12;
+  background: #f4f6fb;
 }
 
 .form-error {

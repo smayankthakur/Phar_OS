@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type Role = "RESELLER_OWNER" | "RESELLER_ADMIN" | "RESELLER_SUPPORT";
 type PlanTier = "STARTER" | "PRO" | "AGENCY" | "ENTERPRISE";
@@ -46,7 +47,7 @@ type WorkspaceDTO = {
 async function postJson(path: string, body: Record<string, unknown>, method: "POST" | "PATCH" = "POST") {
   const response = await fetch(path, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: withCsrfHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
   const payload = await response.json().catch(() => ({}));
@@ -495,4 +496,3 @@ function ClientRow({
     </tr>
   );
 }
-

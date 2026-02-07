@@ -4,7 +4,6 @@ import { AuthError } from "@/lib/auth";
 import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireBillingWriteAccess, requireFeature } from "@/lib/entitlements";
 import { processNotificationOutbox } from "@/lib/notify";
-import { RateLimitError, rateLimitOrThrow } from "@/lib/ratelimit";
 import { requireOwner } from "@/lib/rbac";
 import { getCurrentWorkspace } from "@/lib/tenant";
 
@@ -23,14 +22,14 @@ export async function POST(request: Request) {
   try {
     await requireOwner(workspace.id);
     await requireFeature(workspace.id, "notifications");
-    await requireBillingWriteAccess(workspace.id, "notifications_process");
+    await requireBillingWriteAccess(workspace.id, "ops_notifications_process");
   } catch (error) {
     if (error instanceof EntitlementError) return err("FORBIDDEN", error.message, 403);
     if (error instanceof AuthError) {
       if (error.status === 403) return err("FORBIDDEN", "Insufficient permissions", 403);
       return err("UNAUTHORIZED", "Authentication required", 401);
     }
-    return err("INTERNAL", "Failed to authorize notification processing", 500);
+    return err("INTERNAL", "Failed to authorize notifications ops processing", 500);
   }
 
   let payload: z.infer<typeof bodySchema>;
@@ -40,17 +39,7 @@ export async function POST(request: Request) {
     return err("BAD_REQUEST", "Invalid process payload", 400);
   }
 
-  try {
-    await rateLimitOrThrow({
-      route: "notifications.process",
-      scopeKey: `ws:${workspace.id}`,
-      limit: 30,
-      windowSec: 60,
-    });
-  } catch (error) {
-    if (error instanceof RateLimitError) return err("TOO_MANY_REQUESTS", error.message, 429);
-  }
-
   const processed = await processNotificationOutbox(workspace.id, payload.limit ?? 10);
   return ok({ processed });
 }
+

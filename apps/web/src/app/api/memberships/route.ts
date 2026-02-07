@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { err, ok } from "@/lib/apiResponse";
 import { AuthError, hashPassword } from "@/lib/auth";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { EntitlementError, requireWithinLimit } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { requireOwner } from "@/lib/rbac";
@@ -47,6 +48,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const { workspace } = await getCurrentWorkspace();
 
   try {

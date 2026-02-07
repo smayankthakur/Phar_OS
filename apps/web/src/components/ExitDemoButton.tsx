@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 export function ExitDemoButton() {
   const router = useRouter();
@@ -10,7 +11,7 @@ export function ExitDemoButton() {
   const onExit = async () => {
     setPending(true);
     try {
-      await fetch("/api/demo/exit", { method: "POST" });
+      await fetch("/api/demo/exit", { method: "POST", headers: withCsrfHeaders() });
       router.refresh();
     } finally {
       setPending(false);

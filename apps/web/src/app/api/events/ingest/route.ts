@@ -2,6 +2,7 @@ import { eventTypeSchema } from "@pharos/core";
 import { z } from "zod";
 import { toEventDTO } from "@/lib/events";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { createEventAndRecommendations, RuleRunnerError } from "@/lib/ruleRunner";
 
 const ingestSchema = z.object({
@@ -11,6 +12,12 @@ const ingestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   let payload: z.infer<typeof ingestSchema>;
   try {
     payload = ingestSchema.parse(await request.json());

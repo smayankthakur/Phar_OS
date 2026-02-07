@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Toast } from "@/components/ui/Toast";
 import { PLAN_TIERS, type PlanTier } from "@/lib/plans";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type BillingPayload = {
   workspace: { id: string; name: string };
@@ -84,7 +85,7 @@ export function BillingClient({ ownerMode }: { ownerMode: boolean }) {
     try {
       const response = await fetch("/api/billing/plan", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ plan: planDraft }),
       });
       const body = await response.json().catch(() => ({}));
@@ -105,7 +106,7 @@ export function BillingClient({ ownerMode }: { ownerMode: boolean }) {
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ plan }),
       });
       const body = await response.json().catch(() => ({}));
@@ -123,7 +124,7 @@ export function BillingClient({ ownerMode }: { ownerMode: boolean }) {
     setPortalPending(true);
     setError(null);
     try {
-      const response = await fetch("/api/stripe/portal", { method: "POST" });
+      const response = await fetch("/api/stripe/portal", { method: "POST", headers: withCsrfHeaders() });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.ok || !body.url) {
         setError(body?.error?.message ?? "Failed to open billing portal");

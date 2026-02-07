@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type EventType = "COMPETITOR_PRICE_DROP" | "COST_INCREASE" | "STOCK_LOW";
 type ActionType = "PRICE_MATCH" | "PRICE_INCREASE" | "NOTIFY";
@@ -117,7 +118,7 @@ export function RuleEditor({
 
       const response = await fetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
       });
 
@@ -143,7 +144,7 @@ export function RuleEditor({
     setError(null);
 
     try {
-      const response = await fetch(`/api/rules/${ruleId}`, { method: "DELETE" });
+      const response = await fetch(`/api/rules/${ruleId}`, { method: "DELETE", headers: withCsrfHeaders() });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body?.error?.message ?? "Failed to delete rule");

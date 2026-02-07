@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { err, ok } from "@/lib/apiResponse";
+import { CsrfError, verifyCsrf } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { requireResellerRole } from "@/lib/reseller";
 import { resetWorkspaceDemoDataset } from "@/lib/demoSeed";
@@ -11,6 +12,12 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  try {
+    await verifyCsrf(request);
+  } catch (error) {
+    if (error instanceof CsrfError) return err("CSRF_INVALID", error.message, 403);
+  }
+
   const membership = await requireResellerRole("RESELLER_ADMIN");
 
   let payload: z.infer<typeof bodySchema>;
@@ -57,4 +64,3 @@ export async function POST(request: Request) {
 
   return ok({ workspace: result });
 }
-

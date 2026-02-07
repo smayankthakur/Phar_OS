@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "StripeWebhookEvent" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "payloadHash" TEXT,
+ALTER COLUMN "processedAt" DROP NOT NULL,
+ALTER COLUMN "processedAt" DROP DEFAULT;

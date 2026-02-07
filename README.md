@@ -64,10 +64,12 @@ pnpm up
 
 - Stop DB: `pnpm db:down`
 - Open Prisma Studio: `pnpm db:studio`
+- Backup DB (requires `pg_dump`): `pnpm db:backup`
 - Lint: `pnpm lint`
 - Typecheck: `pnpm typecheck`
 - Build: `pnpm build`
 - Start (production): `pnpm start`
+- Start (production alias): `pnpm start:prod`
 - Reset demo dataset (app must be running): `pnpm reset:demo`
 - Smoke tests (db up required): `pnpm test:smoke`
 
@@ -124,7 +126,15 @@ docker run -p 3000:3000 --env DATABASE_URL=postgresql://pharos:pharos@host.docke
 - Use migration deploy flow in production:
 
 ```bash
-pnpm --filter @pharos/db exec prisma migrate deploy --schema prisma/schema.prisma
+pnpm migrate:prod
+```
+
+Production run flow:
+
+```bash
+pnpm build
+pnpm migrate:prod
+pnpm start:prod
 ```
 
 - Health endpoint:
@@ -142,6 +152,7 @@ pnpm --filter @pharos/db exec prisma migrate deploy --schema prisma/schema.prism
 - `docs/04-troubleshooting.md`
 - `docs/05-release-checklist.md`
 - `docs/06-stripe-setup.md`
+- `docs/07-backups.md`
 - `docs/08-ops-and-cron.md`
 - `docs/09-reseller-white-label.md`
 

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 async function postJson(path: string, body: Record<string, unknown>) {
   const response = await fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: withCsrfHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
   const payload = await response.json().catch(() => null);
@@ -26,7 +27,7 @@ export function OpsPanelClient({
     setMessage(null);
     setPending("shopify");
     try {
-      const result = await postJson("/api/shopify/jobs/process", { limit: 10 });
+      const result = await postJson("/api/ops/process-shopify", { limit: 10 });
       if (!result.ok || !result.payload?.ok) {
         setMessage(result.payload?.error?.message ?? "Failed to process Shopify jobs");
         return;
@@ -42,7 +43,7 @@ export function OpsPanelClient({
     setMessage(null);
     setPending("notifications");
     try {
-      const result = await postJson("/api/notifications/process", { limit: 10 });
+      const result = await postJson("/api/ops/process-notifications", { limit: 10 });
       if (!result.ok || !result.payload?.ok) {
         setMessage(result.payload?.error?.message ?? "Failed to process notifications");
         return;
@@ -82,4 +83,3 @@ export function OpsPanelClient({
     </div>
   );
 }
-

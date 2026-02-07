@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type PricingSettings = {
   minMarginPercent: number;
@@ -23,7 +24,7 @@ export function PricingSettingsForm({ initial }: { initial: PricingSettings }) {
     try {
       const response = await fetch("/api/settings/pricing", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(values),
       });
       const body = await response.json().catch(() => ({}));

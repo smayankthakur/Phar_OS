@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type Props = {
   skuId: string;
@@ -25,7 +26,7 @@ export function SkuShopifyMappingForm({ skuId, initialProductId, initialVariantI
     try {
       const response = await fetch(`/api/skus/${skuId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           shopifyProductId: shopifyProductId.trim() || null,
           shopifyVariantId: shopifyVariantId.trim() || null,

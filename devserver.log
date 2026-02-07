@@ -14,3 +14,32 @@
 ✓ Starting...
 ✓ Ready in 10.1s
  GET / 200 in 7.9s (compile: 3.3s, proxy.ts: 397ms, render: 4.2s)
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.56.1:3000
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 7.4s
+ GET / 200 in 7.6s (compile: 2.6s, proxy.ts: 555ms, render: 4.4s)
+✓ Compiled in 67ms
+✓ Compiled in 1583ms
+ GET / 200 in 2.8s (compile: 691ms, proxy.ts: 34ms, render: 2.1s)
+✓ Compiled in 234ms
+ GET / 200 in 2.8s (compile: 542ms, proxy.ts: 18ms, render: 2.2s)
+✓ Compiled in 144ms
+ GET / 200 in 1624ms (compile: 548ms, proxy.ts: 17ms, render: 1059ms)
+✓ Compiled in 238ms
+ GET / 200 in 1663ms (compile: 539ms, proxy.ts: 46ms, render: 1077ms)
+✓ Compiled in 171ms
+ GET / 200 in 1596ms (compile: 491ms, proxy.ts: 13ms, render: 1092ms)
+✓ Compiled in 396ms
+ GET / 200 in 1613ms (compile: 484ms, proxy.ts: 19ms, render: 1109ms)
+ GET /skus 200 in 2.2s (compile: 1135ms, proxy.ts: 43ms, render: 992ms)
+ GET / 200 in 1076ms (compile: 29ms, proxy.ts: 19ms, render: 1028ms)
+○ Compiling /api/demo/reset ...
+ POST /api/demo/reset 403 in 27.3s (compile: 27.1s, proxy.ts: 45ms, render: 121ms)
+✓ Compiled in 979ms
+ GET / 200 in 2.9s (compile: 642ms, proxy.ts: 25ms, render: 2.3s)
+ POST /api/workspaces/select 403 in 4.2s (compile: 3.3s, proxy.ts: 635ms, render: 265ms)
+ GET / 200 in 2.6s (compile: 62ms, proxy.ts: 35ms, render: 2.5s)

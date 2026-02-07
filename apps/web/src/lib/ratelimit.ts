@@ -1,6 +1,4 @@
-import { getRedis, redisConfigured } from "@/lib/redis";
-
-type Backend = "redis" | "memory";
+import { redisConfigured, redisIncrWithTTL } from "@/lib/redis";
 
 type RateLimitInput = {
   route: string;
@@ -18,52 +16,27 @@ export class RateLimitError extends Error {
   }
 }
 
-function backend(): Backend {
-  const configured = (process.env.RATE_LIMIT_BACKEND ?? "redis").toLowerCase();
-  if (configured === "redis" && redisConfigured()) return "redis";
-  return "memory";
+function windowStartSec(windowSec: number, nowSec = Math.floor(Date.now() / 1000)) {
+  return Math.floor(nowSec / windowSec) * windowSec;
 }
 
-function bucketKey(windowSec: number, nowMs = Date.now()) {
-  return Math.floor(nowMs / (windowSec * 1000));
-}
-
-function redisKey(input: RateLimitInput) {
-  const bucket = bucketKey(input.windowSec);
-  return `rl:${input.route}:${input.scopeKey}:${bucket}`;
-}
-
-const memory = new Map<string, { count: number; expiresAtMs: number }>();
-
-async function memoryIncr(key: string, windowSec: number) {
-  const now = Date.now();
-  const existing = memory.get(key);
-  if (!existing || existing.expiresAtMs <= now) {
-    const entry = { count: 1, expiresAtMs: now + windowSec * 1000 };
-    memory.set(key, entry);
-    return entry.count;
-  }
-  existing.count += 1;
-  return existing.count;
+function redisKey(input: RateLimitInput, nowSec = Math.floor(Date.now() / 1000)) {
+  const windowStart = windowStartSec(input.windowSec, nowSec);
+  return { key: `rl:${input.route}:${input.scopeKey}:${windowStart}`, windowStart };
 }
 
 export async function rateLimitOrThrow(input: RateLimitInput) {
-  const key = redisKey(input);
-  let count = 0;
-
-  if (backend() === "redis") {
-    const redis = await getRedis();
-    count = await redis.incr(key);
-    if (count === 1) {
-      // Best-effort TTL; key is per fixed window bucket.
-      await redis.expire(key, input.windowSec);
-    }
-  } else {
-    count = await memoryIncr(key, input.windowSec);
+  if (!redisConfigured()) {
+    throw new Error("Redis is required for rate limiting (missing REDIS_URL or UPSTASH config).");
   }
 
+  const nowSec = Math.floor(Date.now() / 1000);
+  const { key, windowStart } = redisKey(input, nowSec);
+  const count = await redisIncrWithTTL(key, input.windowSec);
+
   if (count > input.limit) {
-    throw new RateLimitError("Too many requests", input.windowSec);
+    const retryAfter = Math.max(1, input.windowSec - (nowSec - windowStart));
+    throw new RateLimitError("Too many requests", retryAfter);
   }
 }
 
@@ -75,4 +48,3 @@ export function getClientIp(request: Request) {
   }
   return request.headers.get("x-real-ip") ?? "unknown";
 }
-

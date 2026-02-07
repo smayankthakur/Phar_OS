@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Table } from "@/components/ui/Table";
 import { Toast } from "@/components/ui/Toast";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type ImportTab = "skus" | "competitors" | "snapshots";
 
@@ -87,7 +88,7 @@ export function ImportCenter() {
     try {
       const response = await fetch(currentMeta.previewUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(makeBody()),
       });
       const body = await response.json().catch(() => ({}));
@@ -109,7 +110,7 @@ export function ImportCenter() {
     try {
       const response = await fetch(currentMeta.commitUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(makeBody()),
       });
       const body = await response.json().catch(() => ({}));

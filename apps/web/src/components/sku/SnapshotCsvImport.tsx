@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Table } from "@/components/ui/Table";
 import { Toast } from "@/components/ui/Toast";
 import { formatMoney, formatTs } from "@/lib/format";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 type PreviewRow = {
   idx: number;
@@ -60,7 +61,7 @@ export function SnapshotCsvImport({ skuId }: { skuId: string }) {
     try {
       const response = await fetch(`/api/skus/${skuId}/snapshots/import`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ csvText, createMissingCompetitors }),
       });
       const body = await response.json().catch(() => ({}));
@@ -81,7 +82,7 @@ export function SnapshotCsvImport({ skuId }: { skuId: string }) {
     try {
       const response = await fetch(`/api/skus/${skuId}/snapshots/import/commit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withCsrfHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ csvText, createMissingCompetitors }),
       });
       const body = await response.json().catch(() => ({}));

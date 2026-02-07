@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 export function LoadDemoDatasetButton({ label = "Load Demo Dataset" }: { label?: string }) {
   const router = useRouter();
@@ -13,7 +14,7 @@ export function LoadDemoDatasetButton({ label = "Load Demo Dataset" }: { label?:
     setPending(true);
     setError(null);
     try {
-      const response = await fetch("/api/demo/reset", { method: "POST" });
+      const response = await fetch("/api/demo/reset", { method: "POST", headers: withCsrfHeaders() });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(body?.error?.message ?? "Failed to load demo dataset");

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
+import { withCsrfHeaders } from "@/lib/csrf-client";
 
 export function ClientDemoEnterButton() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export function ClientDemoEnterButton() {
     setPending(true);
     setError(null);
     try {
-      const response = await fetch("/api/demo/create-workspace", { method: "POST" });
+      const response = await fetch("/api/demo/create-workspace", { method: "POST", headers: withCsrfHeaders() });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (response.status === 401) {
