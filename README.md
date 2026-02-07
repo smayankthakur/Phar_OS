@@ -217,8 +217,8 @@ Outcome: Plan system + Stripe subscription sync driving entitlements.
 
 Outcome: Production security, HA posture, reseller layer.
 
-- Step 23: Security hardening (headers, CSRF, rate limit, backups, prod migrations, observability)
-- Step 24: Redis rate limiting + SKIP LOCKED durable queues + cron endpoints + /ops
+- Step 23: Security hardening (headers, CSRF, rate limit, backups, prod migrations, observability) { `complete` }
+- Step 24: Redis rate limiting + SKIP LOCKED durable queues + cron endpoints + /ops { `complete` }
 - Step 25: Reseller layer: reseller accounts, branding, domain mapping, plan overrides { `complete` }
 
 ### Phase 6 — Enterprise Expansion (Steps 26–30)

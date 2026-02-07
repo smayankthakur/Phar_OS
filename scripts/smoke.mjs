@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { PrismaClient } from "@prisma/client";
 
 function loadEnvFile(path) {
   try {
@@ -40,6 +41,31 @@ async function waitFor(url, timeoutMs = 20000) {
     await new Promise((r) => setTimeout(r, 500));
   }
   return false;
+}
+
+function startServer(port, env) {
+  const baseUrl = `http://localhost:${port}`;
+  const server = spawn(`pnpm --filter web exec dotenv -e ../../.env -- next start -p ${port}`, {
+    shell: true,
+    stdio: "inherit",
+    env,
+  });
+  let serverExited = false;
+  server.on("exit", () => {
+    serverExited = true;
+  });
+  return {
+    baseUrl,
+    server,
+    get exited() {
+      return serverExited;
+    },
+    stop() {
+      if (!serverExited) {
+        server.kill("SIGTERM");
+      }
+    },
+  };
 }
 
 function extractSetCookies(response) {
@@ -154,6 +180,32 @@ async function assertCronSecret(baseUrl, cronSecret) {
   }
 }
 
+async function assertCronEndpoints(baseUrl, cronSecret) {
+  const endpoints = ["/api/cron/process-shopify", "/api/cron/process-notifications", "/api/cron/recalc-usage"];
+  for (const path of endpoints) {
+    const noSecret = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (noSecret.status !== 401) {
+      throw new Error(`${path} without secret should be 401, got ${noSecret.status}`);
+    }
+  }
+
+  for (const path of endpoints) {
+    const withSecret = await fetch(`${baseUrl}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Pharos-Cron": cronSecret },
+      body: "{}",
+    });
+    if (!withSecret.ok) {
+      const body = await withSecret.json().catch(() => ({}));
+      throw new Error(`${path} with secret should succeed: ${body?.error?.message ?? withSecret.statusText}`);
+    }
+  }
+}
+
 async function assertLoginRateLimit(baseUrl, email, wrongPassword) {
   let lastStatus = 0;
   for (let i = 0; i < 12; i += 1) {
@@ -190,6 +242,136 @@ async function assertStripeWebhookCsrfExempt(baseUrl) {
   }
 }
 
+async function assertLoginRateLimitPersists(baseEnv, port, email, wrongPassword) {
+  const runner = startServer(port, baseEnv);
+  try {
+    const healthy = await waitFor(`${runner.baseUrl}/api/health`, 45000);
+    if (!healthy) throw new Error("Restarted server did not become healthy");
+    await assertLoginRateLimit(runner.baseUrl, email, wrongPassword);
+  } finally {
+    runner.stop();
+  }
+}
+
+async function seedOpsQueues(prisma, workspaceId) {
+  await prisma.workspaceNotificationSettings.upsert({
+    where: { workspaceId },
+    create: { workspaceId, notifyMode: "DRY_RUN" },
+    update: { notifyMode: "DRY_RUN" },
+  });
+
+  const sku = await prisma.sKU.create({
+    data: {
+      workspaceId,
+      title: `Smoke Shopify SKU ${Date.now()}`,
+      sku: `SMOKE-SHOPIFY-${Date.now()}`,
+      cost: 100,
+      currentPrice: 120,
+      status: "ACTIVE",
+      shopifyProductId: "gid://shopify/Product/1",
+      shopifyVariantId: "gid://shopify/ProductVariant/1",
+    },
+    select: { id: true, shopifyVariantId: true },
+  });
+
+  const shopifyJobs = await prisma.shopifyJob.createMany({
+    data: [
+      {
+        workspaceId,
+        skuId: sku.id,
+        type: "UPDATE_VARIANT_PRICE",
+        payload: { variantId: sku.shopifyVariantId, newPrice: 123.45 },
+        status: "QUEUED",
+      },
+      {
+        workspaceId,
+        skuId: sku.id,
+        type: "UPDATE_VARIANT_PRICE",
+        payload: { variantId: sku.shopifyVariantId, newPrice: 125.0 },
+        status: "QUEUED",
+      },
+    ],
+  });
+
+  const outbox = await prisma.notificationOutbox.createMany({
+    data: [
+      {
+        workspaceId,
+        type: "EMAIL",
+        payload: {
+          recipients: ["ops@pharos.local"],
+          subject: "Smoke test notification",
+          text: "Smoke test body",
+          json: { hello: "world" },
+        },
+        status: "QUEUED",
+      },
+      {
+        workspaceId,
+        type: "WEBHOOK",
+        payload: {
+          url: "https://example.com/webhook",
+          body: { hello: "webhook" },
+        },
+        status: "QUEUED",
+      },
+    ],
+  });
+
+  const shopifyIds = await prisma.shopifyJob.findMany({
+    where: { workspaceId, status: "QUEUED" },
+    orderBy: { createdAt: "desc" },
+    take: 2,
+    select: { id: true },
+  });
+  const outboxIds = await prisma.notificationOutbox.findMany({
+    where: { workspaceId, status: "QUEUED" },
+    orderBy: { createdAt: "desc" },
+    take: 2,
+    select: { id: true },
+  });
+
+  return {
+    shopifyJobIds: shopifyIds.map((row) => row.id),
+    outboxIds: outboxIds.map((row) => row.id),
+    shopifyCount: shopifyJobs.count,
+    outboxCount: outbox.count,
+  };
+}
+
+async function assertClaimingNoDoubleProcess(prisma, baseUrl, cookieJar, workspaceId) {
+  const seeded = await seedOpsQueues(prisma, workspaceId);
+  if (seeded.shopifyCount === 0 || seeded.outboxCount === 0) {
+    throw new Error("Failed to seed ops queues for claiming test");
+  }
+
+  await Promise.all([
+    requestJson(baseUrl, "/api/ops/process-shopify", { method: "POST", body: JSON.stringify({ limit: 2 }) }, cookieJar),
+    requestJson(baseUrl, "/api/ops/process-shopify", { method: "POST", body: JSON.stringify({ limit: 2 }) }, cookieJar),
+    requestJson(baseUrl, "/api/ops/process-notifications", { method: "POST", body: JSON.stringify({ limit: 2 }) }, cookieJar),
+    requestJson(baseUrl, "/api/ops/process-notifications", { method: "POST", body: JSON.stringify({ limit: 2 }) }, cookieJar),
+  ]);
+
+  const jobs = await prisma.shopifyJob.findMany({
+    where: { id: { in: seeded.shopifyJobIds } },
+    select: { id: true, status: true, attempts: true },
+  });
+  const outbox = await prisma.notificationOutbox.findMany({
+    where: { id: { in: seeded.outboxIds } },
+    select: { id: true, status: true, attempts: true },
+  });
+
+  const badJob = jobs.find((job) => job.status === "RUNNING" || job.attempts > 1);
+  if (badJob) {
+    throw new Error(`Shopify claiming failed: job ${badJob.id} status=${badJob.status} attempts=${badJob.attempts}`);
+  }
+
+  const badOutbox = outbox.find((item) => item.status === "RUNNING" || item.attempts > 1);
+  if (badOutbox) {
+    throw new Error(`Outbox claiming failed: item ${badOutbox.id} status=${badOutbox.status} attempts=${badOutbox.attempts}`);
+  }
+}
+
 async function main() {
   const envFile = loadEnvFile(".env");
   const baseEnv = { ...envFile, ...process.env };
@@ -203,6 +385,9 @@ async function main() {
   const port = 3400 + Math.floor(Math.random() * 300);
   const baseUrl = `http://localhost:${port}`;
   const cookieJar = {};
+  const prisma = new PrismaClient({
+    datasourceUrl: baseEnv.DATABASE_URL,
+  });
 
   console.log("[smoke] Running migrations...");
   await run("pnpm db:migrate", baseEnv);
@@ -210,20 +395,12 @@ async function main() {
   await run("pnpm --filter web build", baseEnv);
 
   console.log(`[smoke] Starting server at ${baseUrl} ...`);
-  const server = spawn(`pnpm --filter web exec dotenv -e ../../.env -- next start -p ${port}`, {
-    shell: true,
-    stdio: "inherit",
-    env: baseEnv,
-  });
-  let serverExited = false;
-  server.on("exit", () => {
-    serverExited = true;
-  });
+  const runner = startServer(port, baseEnv);
 
   try {
     const healthy = await waitFor(`${baseUrl}/api/health`, 45000);
     if (!healthy) {
-      if (serverExited) {
+      if (runner.exited) {
         throw new Error("Server exited before health check completed");
       }
       throw new Error("Server did not become healthy in time");
@@ -235,6 +412,7 @@ async function main() {
 
     console.log("[smoke] Verifying cron secret enforcement...");
     await assertCronSecret(baseUrl, baseEnv.CRON_SECRET);
+    await assertCronEndpoints(baseUrl, baseEnv.CRON_SECRET);
 
     console.log("[smoke] Verifying CSRF enforcement...");
     await assertCsrfEnforced(baseUrl, cookieJar);
@@ -290,11 +468,19 @@ async function main() {
       throw new Error("Timeline is missing EVENT/ACTION/AUDIT entries");
     }
 
+    console.log("[smoke] Verifying durable claiming with concurrent ops...");
+    await assertClaimingNoDoubleProcess(prisma, baseUrl, cookieJar, workspaceId);
+
+    if ((baseEnv.RATE_LIMIT_BACKEND ?? "redis").toLowerCase() === "redis" && (baseEnv.REDIS_URL || baseEnv.UPSTASH_REDIS_REST_URL)) {
+      console.log("[smoke] Verifying Redis rate limit persists across restart...");
+      runner.stop();
+      await assertLoginRateLimitPersists(baseEnv, port, "rate-limit@pharos.local", "wrong-password-123!");
+    }
+
     console.log("[smoke] Smoke tests passed.");
   } finally {
-    if (!serverExited) {
-      server.kill("SIGTERM");
-    }
+    runner.stop();
+    await prisma.$disconnect().catch(() => undefined);
   }
 }
 
