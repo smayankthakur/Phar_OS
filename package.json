@@ -1,0 +1,23 @@
+{
+  "name": "pharos",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "dev": "dotenv -e .env -- pnpm --filter web dev",
+    "build": "dotenv -e .env -- pnpm --filter web build",
+    "start": "dotenv -e .env -- pnpm --filter web start",
+    "up": "node scripts/up.mjs",
+    "reset:demo": "node scripts/reset-demo.mjs",
+    "test:smoke": "node scripts/smoke.mjs",
+    "db:up": "docker compose -f docker/docker-compose.yml up -d",
+    "db:down": "docker compose -f docker/docker-compose.yml down",
+    "db:migrate": "dotenv -e .env -- pnpm --filter @pharos/db db:migrate",
+    "db:studio": "dotenv -e .env -- pnpm --filter @pharos/db db:studio",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^7.4.4"
+  }
+}

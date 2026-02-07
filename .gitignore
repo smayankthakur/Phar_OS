@@ -1,0 +1,10 @@
+node_modules/
+.pnpm-store/
+.env
+.next/
+.localpg/
+.pg/
+run-*.cmd
+apps/web/.next/
+apps/web/node_modules/
+packages/*/node_modules/

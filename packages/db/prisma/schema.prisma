@@ -1,0 +1,444 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ANALYST
+}
+
+enum SKUStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum ActionStatus {
+  RECOMMENDED
+  APPLIED
+}
+
+enum ActionType {
+  PRICE_MATCH
+  PRICE_INCREASE
+  NOTIFY
+}
+
+enum PlanTier {
+  STARTER
+  PRO
+  AGENCY
+  ENTERPRISE
+}
+
+enum ResellerRole {
+  RESELLER_OWNER
+  RESELLER_ADMIN
+  RESELLER_SUPPORT
+}
+
+model Reseller {
+  id           String @id @default(cuid())
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // branding
+  brandName    String?
+  logoUrl      String?
+  accentColor  String?
+  supportEmail String?
+  appName      String?
+
+  memberships  ResellerMembership[]
+  domains      ResellerDomain[]
+  workspaces   Workspace[]
+}
+
+model ResellerMembership {
+  id         String @id @default(cuid())
+  resellerId String
+  userId     String
+  role       ResellerRole @default(RESELLER_SUPPORT)
+  createdAt  DateTime @default(now())
+
+  reseller   Reseller @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([resellerId, userId])
+  @@index([userId])
+}
+
+model ResellerDomain {
+  id         String @id @default(cuid())
+  resellerId String
+  domain     String @unique
+  target     String @default("APP")
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  reseller   Reseller @relation(fields: [resellerId], references: [id], onDelete: Cascade)
+
+  @@index([resellerId, createdAt])
+  @@index([resellerId, verifiedAt])
+}
+
+model Workspace {
+  id          String       @id @default(cuid())
+  resellerId  String?
+  name        String
+  planOverride PlanTier?
+  billingManagedByReseller Boolean @default(false)
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+  sessions    Session[]
+  skus        SKU[]
+  competitors Competitor[]
+  snapshots   CompetitorSnapshot[]
+  events      Event[]
+  rules       Rule[]
+  actions     Action[]
+  auditLogs   AuditLog[]
+  settings    WorkspaceSettings?
+  subscription WorkspaceSubscription?
+  usageMonths WorkspaceUsageMonth[]
+  telemetryEvents TelemetryEvent[]
+  portalTokens PortalToken[]
+  shopifySettings WorkspaceShopifySettings?
+  shopifyJobs ShopifyJob[]
+  notificationSettings WorkspaceNotificationSettings?
+  notificationOutbox NotificationOutbox[]
+
+  reseller Reseller? @relation(fields: [resellerId], references: [id], onDelete: SetNull)
+
+  @@index([resellerId])
+}
+
+model WorkspaceSubscription {
+  id          String   @id @default(cuid())
+  workspaceId String   @unique
+  plan        PlanTier @default(STARTER)
+  status      String   @default("TRIALING")
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  currentPeriodEnd DateTime?
+  cancelAtPeriodEnd Boolean @default(false)
+  startedAt   DateTime @default(now())
+  renewedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model StripeWebhookEvent {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique
+  type          String
+  processedAt   DateTime @default(now())
+}
+
+model WorkspaceUsageMonth {
+  id                      String   @id @default(cuid())
+  workspaceId             String
+  yearMonth               String
+  seatsUsed               Int      @default(0)
+  skusUsed                Int      @default(0)
+  competitorsUsed         Int      @default(0)
+  snapshotImportRowsUsed  Int      @default(0)
+  portalTokensUsed        Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, yearMonth])
+  @@index([workspaceId, yearMonth])
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  passwordHash String?
+  name        String?
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+  sessions    Session[]
+  resellerMemberships ResellerMembership[]
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  userId      String
+  workspaceId String?
+  token       String    @unique
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([userId, expiresAt])
+}
+
+model Membership {
+  id          String         @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        MembershipRole
+  createdAt   DateTime       @default(now())
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model SKU {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  title        String
+  sku          String
+  cost         Decimal   @db.Decimal(12, 2)
+  currentPrice Decimal   @db.Decimal(12, 2)
+  status       SKUStatus @default(ACTIVE)
+  shopifyProductId String?
+  shopifyVariantId String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  snapshots    CompetitorSnapshot[]
+  events       Event[]
+  actions      Action[]
+  shopifyJobs  ShopifyJob[]
+
+  @@index([workspaceId])
+  @@unique([workspaceId, sku])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  workspaceId String
+  skuId       String?
+  type        String
+  payload     Json
+  createdAt   DateTime  @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sku         SKU?      @relation(fields: [skuId], references: [id], onDelete: SetNull)
+  actions     Action[]
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, type])
+  @@index([workspaceId, skuId])
+}
+
+model Competitor {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  domain      String?
+  currency    String    @default("INR")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  snapshots   CompetitorSnapshot[]
+
+  @@index([workspaceId])
+  @@unique([workspaceId, name])
+}
+
+model CompetitorSnapshot {
+  id           String     @id @default(cuid())
+  workspaceId  String
+  skuId        String
+  competitorId String
+  price        Decimal    @db.Decimal(12, 2)
+  capturedAt   DateTime   @default(now())
+  source       String     @default("MANUAL")
+
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sku          SKU        @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  competitor   Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, skuId])
+  @@index([workspaceId, competitorId])
+  @@index([skuId, competitorId, capturedAt])
+}
+
+model Rule {
+  id             String    @id @default(cuid())
+  workspaceId    String
+  name           String
+  eventType      String
+  enabled        Boolean   @default(true)
+  condition      Json
+  actionTemplate Json
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actions        Action[]
+
+  @@index([workspaceId, eventType])
+  @@unique([workspaceId, name])
+}
+
+model Action {
+  id          String       @id @default(cuid())
+  workspaceId String
+  eventId     String
+  skuId       String?
+  type        ActionType
+  status      ActionStatus @default(RECOMMENDED)
+  title       String
+  details     Json
+  safetyStatus String     @default("OK")
+  safetyReason String?
+  ruleId      String?
+  createdAt   DateTime     @default(now())
+  appliedAt   DateTime?
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sku         SKU?         @relation(fields: [skuId], references: [id], onDelete: SetNull)
+  rule        Rule?        @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  shopifyJobs ShopifyJob[]
+  notificationOutbox NotificationOutbox[]
+
+  @@index([workspaceId, status, createdAt])
+  @@index([workspaceId, skuId, createdAt])
+}
+
+model WorkspaceSettings {
+  id                   String    @id @default(cuid())
+  workspaceId          String    @unique
+  minMarginPercent     Decimal   @default(10) @db.Decimal(6, 2)
+  maxPriceChangePercent Decimal  @default(15) @db.Decimal(6, 2)
+  roundingMode         String    @default("NEAREST_1")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model TelemetryEvent {
+  id          String   @id @default(cuid())
+  workspaceId String
+  type        String
+  meta        Json?
+  createdAt   DateTime @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, type])
+}
+
+model PortalToken {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  token       String    @unique
+  revokedAt   DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, revokedAt])
+}
+
+model WorkspaceShopifySettings {
+  id               String   @id @default(cuid())
+  workspaceId      String   @unique
+  shopDomain       String?
+  adminAccessToken String?
+  priceUpdateMode  String   @default("DRY_RUN")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model ShopifyJob {
+  id          String   @id @default(cuid())
+  workspaceId String
+  skuId       String
+  actionId    String?
+  type        String
+  payload     Json
+  status      String   @default("QUEUED")
+  attempts    Int      @default(0)
+  lastError   String?
+  result      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sku         SKU       @relation(fields: [skuId], references: [id], onDelete: Cascade)
+  action      Action?   @relation(fields: [actionId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status, createdAt])
+}
+
+model WorkspaceNotificationSettings {
+  id              String   @id @default(cuid())
+  workspaceId     String   @unique
+  emailRecipients String?
+  webhookUrl      String?
+  notifyMode      String   @default("DRY_RUN")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model NotificationOutbox {
+  id          String   @id @default(cuid())
+  workspaceId String
+  actionId    String?
+  type        String
+  payload     Json
+  status      String   @default("QUEUED")
+  attempts    Int      @default(0)
+  lastError   String?
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  action      Action?   @relation(fields: [actionId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status, createdAt])
+  @@index([workspaceId, actionId])
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  workspaceId String
+  actorUserId String?
+  actorEmail String?
+  actionId   String?
+  entityType String
+  entityId   String
+  event      String
+  before     Json?
+  after      Json?
+  createdAt  DateTime  @default(now())
+
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+}
